@@ -24,7 +24,7 @@ if [ "$BUILD_KERNEL" = true ] ; then
     temp_dir=$(sudo -u nobody mktemp -d)
 
     # Fetch current RPi2/3 kernel sources
-    sudo -u nobody git -C "${temp_dir}" clone --depth=1 "${KERNEL_URL}"
+    sudo -u nobody git -C "${temp_dir}" clone --depth=1 -b "${KERNEL_BRANCH}" "${KERNEL_URL}"
 
     # Copy downloaded kernel sources
     mv "${temp_dir}/linux" "${R}/usr/src/"
@@ -94,11 +94,11 @@ if [ "$BUILD_KERNEL" = true ] ; then
     fi
 
     # Cross compile kernel and modules
-    make -C "${KERNEL_DIR}" -j${KERNEL_THREADS} ARCH="${KERNEL_ARCH}" CROSS_COMPILE="${CROSS_COMPILE}" zImage modules dtbs
+    make -C "${KERNEL_DIR}" -j${KERNEL_THREADS} ARCH="${KERNEL_ARCH}" CROSS_COMPILE="${CROSS_COMPILE}" Image modules dtbs
   fi
 
   # Check if kernel compilation was successful
-  if [ ! -r "${KERNEL_DIR}/arch/${KERNEL_ARCH}/boot/zImage" ] ; then
+  if [ ! -r "${KERNEL_DIR}/arch/${KERNEL_ARCH}/boot/Image" ] ; then
     echo "error: kernel compilation failed! (zImage not found)"
     cleanup
     exit 1
@@ -129,17 +129,22 @@ if [ "$BUILD_KERNEL" = true ] ; then
   install_readonly "${KERNEL_DIR}/.config" "${R}/boot/config-${KERNEL_VERSION}"
 
   # Copy dts and dtb device tree sources and binaries
+  # arm64 have diferent paths
   mkdir "${BOOT_DIR}/overlays"
-  install_readonly "${KERNEL_DIR}/arch/${KERNEL_ARCH}/boot/dts/"*.dtb "${BOOT_DIR}/"
+  if [ "$KERNEL_ARCH" = "arm64" ] ; then
+    install_readonly "${KERNEL_DIR}/arch/${KERNEL_ARCH}/boot/dts/broadcom/"*.dtb "${BOOT_DIR}/"
+  else
+    install_readonly "${KERNEL_DIR}/arch/${KERNEL_ARCH}/boot/dts/"*.dtb "${BOOT_DIR}/"
+  fi
   install_readonly "${KERNEL_DIR}/arch/${KERNEL_ARCH}/boot/dts/overlays/"*.dtb* "${BOOT_DIR}/overlays/"
   install_readonly "${KERNEL_DIR}/arch/${KERNEL_ARCH}/boot/dts/overlays/README" "${BOOT_DIR}/overlays/README"
 
   if [ "$ENABLE_UBOOT" = false ] ; then
     # Convert and copy zImage kernel to the boot directory
-    "${KERNEL_DIR}/scripts/mkknlimg" "${KERNEL_DIR}/arch/${KERNEL_ARCH}/boot/zImage" "${BOOT_DIR}/${KERNEL_IMAGE}"
+    "${KERNEL_DIR}/scripts/mkknlimg" "${KERNEL_DIR}/arch/${KERNEL_ARCH}/boot/Image" "${BOOT_DIR}/${KERNEL_IMAGE}"
   else
     # Copy zImage kernel to the boot directory
-    install_readonly "${KERNEL_DIR}/arch/${KERNEL_ARCH}/boot/zImage" "${BOOT_DIR}/${KERNEL_IMAGE}"
+    install_readonly "${KERNEL_DIR}/arch/${KERNEL_ARCH}/boot/Image" "${BOOT_DIR}/${KERNEL_IMAGE}"
   fi
 
   # Remove kernel sources
