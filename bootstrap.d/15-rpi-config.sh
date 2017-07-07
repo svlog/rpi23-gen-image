@@ -58,7 +58,7 @@ fi
 
 # Add serial console support
 if [ "$ENABLE_CONSOLE" = true ] ; then
-  CMDLINE="${CMDLINE} console=ttyAMA0,115200 kgdboc=ttyAMA0,115200"
+  CMDLINE="${CMDLINE} console=ttyAMA0,115200"
 fi
 
 # Remove IPv6 networking support
